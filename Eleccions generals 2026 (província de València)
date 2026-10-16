@@ -1,0 +1,293 @@
+HTML
+
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Llei d'Hondt - Província de València</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .info-box {
+            background: #e8f4fd;
+            border-left: 4px solid #3498db;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            display: block;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: center;
+            font-size: 13px;
+        }
+        th {
+            background-color: #2c3e50;
+            color: white;
+        }
+        td input[type="text"], td input[type="number"] {
+            width: 90%;
+            padding: 4px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+        td input[type="text"] {
+            text-align: left;
+        }
+        .btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background-color: #219653;
+        }
+        .btn-danger {
+            background-color: #c0392b;
+        }
+        .btn-danger:hover {
+            background-color: #a93226;
+        }
+        .results-summary {
+            margin-top: 20px;
+            background: #eafaf1;
+            border: 1px solid #a3e4d7;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Llei d'Hondt – Eleccions Generals (Província de València)</h1>
+    <div class="info-box">
+        <strong>Nota:</strong> Per a la província de València es reparteixen <strong>16 diputats</strong>. S'aplica automàticament una barrera electoral del 3% sobre els vots vàlids (emetents menys vots nuls)[cite: 1]. Pots modificar lliurement els noms dels partits i els vots.
+    </div>
+
+    <div>
+        <button class="btn" onclick="afegirFila()">Afegir Partit</button>
+    </div>
+    <br>
+
+    <div id="taula-container">
+        <!-- Generada per JavaScript -->
+    </div>
+
+    <div class="results-summary" id="resum-resultats">
+        <h3>Resultat de l'Assignació d'Escons:</h3>
+        <p>Introduïu les dades per veure el repartiment dels 16 diputats.</p>
+    </div>
+</div>
+
+<script>
+    const TOTAL_DIPUTATS = 16;
+    const BARRERA_PERCENTATGE = 0.03;
+
+    let dadesPartits = [
+        { nom: "PP", vots: 450000 },
+        { nom: "PSOE", vots: 400000 },
+        { nom: "VOX", vots: 200000 },
+        { nom: "COMPROMÍS-SUMAR", vots: 180000 },
+        { nom: "PODEM", vots: 30000 },
+        { nom: "PACMA", vots: 12000 }
+    ];
+
+    let votsEnBlanc = 15000;
+    let votsNuls = 5000;
+
+    function renderitzar() {
+        let html = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Partit / Concepte</th>
+                        <th>Vots</th>
+                        <th>Supera 3%?</th>
+        `;
+        
+        for (let i = 1; i <= TOTAL_DIPUTATS; i++) {
+            html += `<th>${i}</th>`;
+        }
+        html += `<th>Escons</th><th>Accions</th></tr></thead><tbody>`;
+
+        // Calcular total vots vàlids per al llindar del 3%
+        let sumaVotsPartits = dadesPartits.reduce((acc, p) => acc + Number(p.vots), 0);
+        let votsValids = sumaVotsPartits + Number(votsEnBlanc);
+        let llindar = votsValids * BARRERA_PERCENTATGE;
+
+        // Càlcul de la taula d'Hondt
+        let matriuCocients = [];
+        let partitsValids = [];
+
+        dadesPartits.forEach((p, index) => {
+            let supera = p.vots >= llindar;
+            let cocients = [];
+            if (supera) {
+                for (let i = 1; i <= TOTAL_DIPUTATS; i++) {
+                    cocients.push(p.vots / i);
+                }
+                partitsValids.push({ index: index, vots: p.vots, nom: p.nom });
+            } else {
+                for (let i = 1; i <= TOTAL_DIPUTATS; i++) {
+                    cocients.push(0);
+                }
+            }
+            matriuCocients.push(cocients);
+        });
+
+        // Assignació d'escons
+        let esconsAssignats = new Array(dadesPartits.length).fill(0);
+        let registreEsconsDetall = [];
+
+        for (let esco = 0; esco < TOTAL_DIPUTATS; esco++) {
+            let maxVal = -1;
+            let millorPartit = -1;
+
+            matriuCocients.forEach((cocients, pIndex) => {
+                if (dadesPartits[pIndex].vots >= llindar) {
+                    let cActual = cocients[esconsAssignats[pIndex]];
+                    if (cActual > maxVal) {
+                        maxVal = cActual;
+                        millorPartit = pIndex;
+                    }
+                }
+            });
+
+            if (millorPartit !== -1) {
+                esconsAssignats[millorPartit]++;
+                registreEsconsDetall.push({ esco: esco + 1, partit: dadesPartits[millorPartit].nom, valor: maxVal });
+            }
+        }
+
+        // Dibuixar files de partits
+        dadesPartits.forEach((p, index) => {
+            let supera = p.vots >= llindar;
+            html += `<tr>
+                <td><input type="text" value="${p.nom}" onchange="actualitzarNom(${index}, this.value)"></td>
+                <td><input type="number" value="${p.vots}" min="0" onchange="actualitzarVots(${index}, this.value)"></td>
+                <td>${supera ? 'Sí' : 'No (< 3%)'}</td>
+            `;
+
+            for (let i = 0; i < TOTAL_DIPUTATS; i++) {
+                let escoGuanyat = false;
+                // Comprovar si aquest cell correspon a un escó assignat
+                let escoText = "";
+                if (supera) {
+                    let valCocient = p.vots / (i + 1);
+                    escoText = valCocient.toLocaleString('es-ES', {maximumFractionDigits: 1});
+                } else {
+                    escoText = "-";
+                }
+                html += `<td>${escoText}</td>`;
+            }
+
+            html += `
+                <td><strong>${esconsAssignats[index]}</strong></td>
+                <td><button class="btn btn-danger" onclick="eliminarFila(${index})">Eliminar</button></td>
+            </tr>`;
+            html += `</tr>`;
+        });
+
+        // Fila Vots en Blanc
+        html += `<tr>
+            <td>Vots en blanc</td>
+            <td><input type="number" value="${votsEnBlanc}" min="0" onchange="actualitzarBlanc(this.value)"></td>
+            <td colspan="${TOTAL_DIPUTATS + 2}">-</td>
+        </tr>`;
+
+        // Fila Vots Nuls
+        html += `<tr>
+            <td>Vots nuls</td>
+            <td><input type="number" value="${votsNuls}" min="0" onchange="actualitzarNuls(this.value)"></td>
+            <td colspan="${TOTAL_DIPUTATS + 2}">-</td>
+        </tr>`;
+
+        // Fila Llindar 3%
+        html += `<tr>
+            <td><strong>TALL (3% vàlids)</strong></td>
+            <td><strong>${llindar.toFixed(2)}</strong></td>
+            <td colspan="${TOTAL_DIPUTATS + 2}">Vots totals vàlids: ${votsValids}</td>
+        </tr>`;
+
+        html += `</tbody></table>`;
+        document.getElementById('taula-container').innerHTML = html;
+
+        // Actualitzar resum de resultats
+        let resumHtml = `<h3>Resultat de l'Assignació d'Escons (Total: ${TOTAL_DIPUTATS} diputats):</h3><ul>`;
+        dadesPartits.forEach((p, index) => {
+            if (esconsAssignats[index] > 0) {
+                resumHtml += `<li><strong>${p.nom}</strong>: ${esconsAssignats[index]} diputat(s)</li>`;
+            }
+        });
+        resumHtml += `</ul>`;
+        document.getElementById('resum-resultats').innerHTML = resumHtml;
+    }
+
+    function actualitzarNom(index, valor) {
+        dadesPartits[index].nom = valor;
+        renderitzar();
+    }
+
+    function actualitzarVots(index, valor) {
+        dadesPartits[index].vots = Number(valor);
+        renderitzar();
+    }
+
+    function actualitzarBlanc(valor) {
+        votsEnBlanc = Number(valor);
+        renderitzar();
+    }
+
+    function actualitzarNuls(valor) {
+        votsNuls = Number(valor);
+        renderitzar();
+    }
+
+    function afegirFila() {
+        dadesPartits.push({ nom: "Nou Partit", vots: 0 });
+        renderitzar();
+    }
+
+    function eliminarFila(index) {
+        dadesPartits.splice(index, 1);
+        renderitzar();
+    }
+
+    // Inicialització
+    renderitzar();
+</script>
+
+</body>
+</html>
